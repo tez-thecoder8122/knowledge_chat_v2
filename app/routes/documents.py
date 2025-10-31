@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
+import os
 
 from app.models.schemas import DocumentUploadResponse, DocumentListResponse
 from app.services.document_service import DocumentService
@@ -101,9 +102,6 @@ async def delete_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found"
         )
-    
-    # Delete file and index
-    import os
     
     try:
         if os.path.exists(document.file_path):

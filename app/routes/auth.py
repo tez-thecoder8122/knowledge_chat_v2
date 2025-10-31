@@ -12,19 +12,8 @@ logger = setup_logger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserCreate, db: Session = Depends(get_db)):
-    """
-    Register a new user.
-    
-    Args:
-        user_data: User registration data
-        db: Database session
-        
-    Returns:
-        Created user information
-    """
     try:
         user = AuthService.create_user(db, user_data)
         logger.info(f"User registered successfully: {user.username}")
@@ -38,22 +27,9 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
             detail="Registration failed"
         )
 
-
 @router.post("/login", response_model=Token)
 async def login(user_data: UserLogin, db: Session = Depends(get_db)):
-    """
-    Login and receive JWT token.
-    
-    Args:
-        user_data: User login credentials
-        db: Database session
-        
-    Returns:
-        JWT access token and user information
-    """
-    # Authenticate user
     user = AuthService.authenticate_user(db, user_data.username, user_data.password)
-    
     if not user:
         logger.warning(f"Failed login attempt for username: {user_data.username}")
         raise HTTPException(
@@ -61,16 +37,12 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = AuthService.create_access_token(
         data={"sub": str(user.id), "username": user.username},
         expires_delta=access_token_expires
     )
-    
     logger.info(f"User logged in successfully: {user.username}")
-    
     return {
         "access_token": access_token,
         "token_type": "bearer",

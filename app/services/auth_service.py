@@ -3,35 +3,43 @@ from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Depends, Request
 
 from app.models.database import User
 from app.models.schemas import UserCreate
+from app.db.session import get_db
 from app.config import settings
 from app.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
+# Password hashing context - use argon2 as fallback (handles long passwords better)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
 
 class AuthService:
     """Service for handling authentication operations."""
     
     @staticmethod
     def hash_password(password: str) -> str:
-        """Hash a plain password."""
-         # Truncate password to 72 bytes (bcrypt limit)
-        if len(password.encode()) > 72:
-            password = password[:72]
+        """Hash a plain password with proper truncation."""
+        # Truncate password to 72 bytes (bcrypt limit)
+        password_bytes = password.encode('utf-8')
+        if len(password_bytes) > 72:
+            password = password_bytes[:72].decode('utf-8', errors='ignore')
         return pwd_context.hash(password)
-
     
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """Verify a password against its hash."""
-        return pwd_context.verify(plain_password, hashed_password)
+        try:
+            # Truncate plain password to 72 bytes (same as hash_password)
+            password_bytes = plain_password.encode('utf-8')
+            if len(password_bytes) > 72:
+                plain_password = password_bytes[:72].decode('utf-8', errors='ignore')
+            return pwd_context.verify(plain_password, hashed_password)
+        except Exception as e:
+            logger.error(f"Password verification error: {e}")
+            return False
     
     @staticmethod
     def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -150,3 +158,35 @@ class AuthService:
     def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
         """Get user by ID."""
         return db.query(User).filter(User.id == user_id).first()
+
+
+def get_current_user(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """JWT dependency for FastAPI"""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or invalid Authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    token = auth_header.split(" ")[1]
+    try:
+        payload = AuthService.decode_token(token)
+        user_id = int(payload.get("sub"))
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user

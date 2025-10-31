@@ -93,3 +93,39 @@ class HealthCheck(BaseModel):
     database: str
     openai: str
     timestamp: datetime
+
+class ImageMedia(BaseModel):
+    id: int
+    type: str
+    page_number: Optional[int]
+    description: str
+    image_base64: str
+    image_format: str
+    relevance_score: float
+
+class TableMedia(BaseModel):
+    id: int
+    type: str
+    page_number: Optional[int]
+    description: str
+    table_csv: str
+    table_html: str
+    relevance_score: float
+
+class TextSource(BaseModel):
+    document: str
+    chunk: str
+    distance: float
+
+class QueryRequest(BaseModel):
+    question: str
+    top_k: Optional[int] = 3
+    include_media: Optional[bool] = True
+
+class QueryResponse(BaseModel):
+    question: str
+    answer: str
+    text_sources: List[TextSource]
+    media_items: List[dict]  # Can be Image or Media
+    context_used: List[str]
+    timestamp: str
