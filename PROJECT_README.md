@@ -353,30 +353,4 @@ docker push your-registry/knowledge-chat-system:latest
 
 ---
 
-## **License**
-
-MIT License - See LICENSE file for details
-
----
-
-## **Support & Contact**
-
-For issues, feature requests, or contributions:
-- Open an issue on GitHub
-- Contact: support@example.com
-
----
-
-## **Changelog**
-
-### **v1.0 (Current)**
-- ✅ Multi-modal document Q&A with text, images, tables
-- ✅ FastAPI backend with JWT authentication
-- ✅ PostgreSQL database with FAISS indexing
-- ✅ Streamlit frontend with real-time rendering
-- ✅ OpenAI embeddings and GPT-4 LLM integration
-- ✅ Docker containerization and docker-compose setup
-
----
-
 **Happy querying! 🚀**
